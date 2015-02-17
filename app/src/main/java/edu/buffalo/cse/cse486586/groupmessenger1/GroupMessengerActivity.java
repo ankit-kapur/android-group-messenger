@@ -36,7 +36,7 @@ public class GroupMessengerActivity extends Activity {
         /*
          * TODO: You need to register and implement an OnClickListener for the "Send" button.
          * In your implementation you need to get the message from the input box (EditText)
-         * and send it to other AVDs.
+         * and send it to other AVDs. Hi
          */
     }
 
