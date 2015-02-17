@@ -20,7 +20,6 @@ import android.widget.TextView;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
@@ -229,9 +228,12 @@ public class GroupMessengerActivity extends Activity {
             /* Build URI */
             Uri uri = OnPTestClickListener.buildUri(OnPTestClickListener.URI_SCHEME, OnPTestClickListener.URI);
 
-            /* TODO: Handle incoming messages with the same time stamp.
-               TODO: Query with key = timeStamp. If found, append this timestamp to the existing one */
+            /* Handle incoming messages with the same time stamp.
+               Query with key = timeStamp. If found, append this message to the existing one */
             Cursor checkCursor = contentResolver.query(uri, null, timeStamp, null, null);
+            String checkText = getTextFromCursor(checkCursor);
+            if (checkText != null && checkText.length() > 0)
+                message = checkText + "\n" + message;
 
             /* Write what was received to the content provider */
             ContentValues contentValue = new ContentValues();
@@ -243,29 +245,35 @@ public class GroupMessengerActivity extends Activity {
             StringBuilder allMessages = new StringBuilder("");
             for (int i=0; i <= timeKeeper; i++) {
                 Cursor resultCursor = contentResolver.query(uri, null, String.valueOf(i), null, null);
-                if (resultCursor != null) {
-                    int keyIndex = resultCursor.getColumnIndex(OnPTestClickListener.KEY_FIELD);
-                    int valueIndex = resultCursor.getColumnIndex(OnPTestClickListener.VALUE_FIELD);
-
-                    if (keyIndex != -1 && valueIndex != -1) {
-
-                        resultCursor.moveToFirst();
-
-                        if (!(resultCursor.isFirst() && resultCursor.isLast())) {
-                            Log.e(TAG, "Wrong number of rows in cursor");
-                        } else {
-                            /* Append this i-th timestamp to the text */
-                            String messageText = resultCursor.getString(valueIndex) + "\n";
-                            allMessages.append(messageText);
-                        }
-                    }
-                    resultCursor.close();
-                }
+                String cursorText = getTextFromCursor(resultCursor);
+                if (cursorText != null && cursorText.length() > 0)
+                    allMessages.append(cursorText + "\n");
             }
 
             /* Display all the messages onto the text-view */
             textView.setText(allMessages.toString());
             return;
         }
+    }
+
+    public String getTextFromCursor(Cursor cursor) {
+        String messageText = "";
+        if (cursor != null) {
+            int keyIndex = cursor.getColumnIndex(OnPTestClickListener.KEY_FIELD);
+            int valueIndex = cursor.getColumnIndex(OnPTestClickListener.VALUE_FIELD);
+
+            if (keyIndex != -1 && valueIndex != -1) {
+
+                cursor.moveToFirst();
+                if (!(cursor.isFirst() && cursor.isLast())) {
+                    Log.e(TAG, "Wrong number of rows in cursor");
+                } else {
+                    /* Append this i-th timestamp to the text */
+                    messageText = cursor.getString(valueIndex);
+                }
+            }
+            cursor.close();
+        }
+        return messageText;
     }
 }
