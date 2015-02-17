@@ -32,16 +32,33 @@ import java.net.UnknownHostException;
  * @author stevko
  */
 public class GroupMessengerActivity extends Activity {
+
     static final String TAG = GroupMessengerActivity.class.getSimpleName();
     static final int SERVER_PORT = 10000;
     static final String[] REMOTE_PORT = {"11108", "11112", "11116", "11120", "11124"};
-    static int timeKeeper = 0;
+    static final String timeKeeperFileName = "timekeeper";
+
+    int timeKeeper = 0;
     TextView textView = null;
+    Uri uri;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_group_messenger);
+
+        /* Build URI */
+        uri = OnPTestClickListener.buildUri(OnPTestClickListener.URI_SCHEME, OnPTestClickListener.URI);
+
+        /* TODO: Get the timekeeper from it's file (if such a file exists) */
+        Cursor checkCursor = getContentResolver().query(uri, null, timeKeeperFileName, null, null);
+        String timeText = getTextFromCursor(checkCursor);
+        if (timeText != null && timeText.length() > 0)
+            timeKeeper = Integer.parseInt(timeText);
+        else {
+            timeKeeper = 0;
+            writeTimeKeeper();
+        }
 
         /* TextView: To display all messages.
         *  EditText: To type in a message */
@@ -49,6 +66,7 @@ public class GroupMessengerActivity extends Activity {
         textView.setMovementMethod(new ScrollingMovementMethod());
         final EditText editText = (EditText) findViewById(R.id.editText1);
         final Button sendButton = (Button) findViewById(R.id.button4);
+        showChatOnTextView();
 
         /*
          * Calculate the port number that this AVD listens on.
@@ -116,6 +134,13 @@ public class GroupMessengerActivity extends Activity {
 
     }
 
+    private void writeTimeKeeper() {
+        ContentValues contentValue = new ContentValues();
+        contentValue.put(OnPTestClickListener.KEY_FIELD, timeKeeperFileName);
+        contentValue.put(OnPTestClickListener.VALUE_FIELD, String.valueOf(timeKeeper));
+        getContentResolver().insert(uri, contentValue);
+    }
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
@@ -139,9 +164,10 @@ public class GroupMessengerActivity extends Activity {
 
             /* Increment the timer */
             timeKeeper++;
+            writeTimeKeeper();
 
             try {
-                /* Get the message and port no. */
+                /* Timestamp and message-text */
                 String msgToSend = String.valueOf(timeKeeper) + " " + msgs[0];
 
                 for (int remoteHostNumber = 0; remoteHostNumber < REMOTE_PORT.length; remoteHostNumber++) {
@@ -219,45 +245,51 @@ public class GroupMessengerActivity extends Activity {
             /* Extract the timestamp and message from the received string */
             ContentResolver contentResolver = getContentResolver();
             String strReceived = strings[0].trim();
-            String timeStamp = strReceived.substring(0, strReceived.indexOf(" "));
-            String message = strReceived.substring(strReceived.indexOf(" ") + 1, strReceived.length());
-            int timeStampIncoming = Integer.parseInt(timeStamp);
-            if (timeKeeper < timeStampIncoming)
-                timeKeeper = timeStampIncoming;
+            if (strReceived != null && strReceived.indexOf(" ") > -1) {
+                String timeStamp = strReceived.substring(0, strReceived.indexOf(" "));
+                String message = strReceived.substring(strReceived.indexOf(" ") + 1, strReceived.length());
+                int timeStampIncoming = Integer.parseInt(timeStamp);
+                if (timeKeeper < timeStampIncoming) {
+                    timeKeeper = timeStampIncoming;
+                    writeTimeKeeper();
+                }
 
-            /* Build URI */
-            Uri uri = OnPTestClickListener.buildUri(OnPTestClickListener.URI_SCHEME, OnPTestClickListener.URI);
-
-            /* Handle incoming messages with the same time stamp.
+                /* Handle incoming messages with the same time stamp.
                Query with key = timeStamp. If found, append this message to the existing one */
-            Cursor checkCursor = contentResolver.query(uri, null, timeStamp, null, null);
-            String checkText = getTextFromCursor(checkCursor);
-            if (checkText != null && checkText.length() > 0)
-                message = checkText + "\n" + message;
+                Cursor checkCursor = contentResolver.query(uri, null, timeStamp, null, null);
+                String checkText = getTextFromCursor(checkCursor);
+                if (checkText != null && checkText.length() > 0)
+                    message = checkText + "\n" + message;
 
-            /* Write what was received to the content provider */
-            ContentValues contentValue = new ContentValues();
-            contentValue.put(OnPTestClickListener.KEY_FIELD, timeStamp);
-            contentValue.put(OnPTestClickListener.VALUE_FIELD, message);
-            contentResolver.insert(uri, contentValue);
+                /* Write what was received to the content provider */
+                ContentValues contentValue = new ContentValues();
+                contentValue.put(OnPTestClickListener.KEY_FIELD, timeStamp);
+                contentValue.put(OnPTestClickListener.VALUE_FIELD, message);
+                contentResolver.insert(uri, contentValue);
 
-            /* Refresh the content of the TextView */
-            StringBuilder allMessages = new StringBuilder("");
-            for (int i=0; i <= timeKeeper; i++) {
-                Cursor resultCursor = contentResolver.query(uri, null, String.valueOf(i), null, null);
-                String cursorText = getTextFromCursor(resultCursor);
-                if (cursorText != null && cursorText.length() > 0)
-                    allMessages.append(cursorText + "\n");
+                /* Refresh the content of the TextView */
+                showChatOnTextView();
             }
-
-            /* Display all the messages onto the text-view */
-            textView.setText(allMessages.toString());
             return;
         }
     }
 
+    private void showChatOnTextView() {
+        /* Refresh the content of the TextView */
+        StringBuilder allMessages = new StringBuilder("");
+        for (int i=0; i <= timeKeeper; i++) {
+            Cursor resultCursor = getContentResolver().query(uri, null, String.valueOf(i), null, null);
+            String cursorText = getTextFromCursor(resultCursor);
+            if (cursorText != null && cursorText.length() > 0)
+                allMessages.append(cursorText + "\n");
+        }
+
+        /* Display all the messages onto the text-view */
+        textView.setText(allMessages.toString());
+    }
+
     public String getTextFromCursor(Cursor cursor) {
-        String messageText = "";
+        String messageText = null;
         if (cursor != null) {
             int keyIndex = cursor.getColumnIndex(OnPTestClickListener.KEY_FIELD);
             int valueIndex = cursor.getColumnIndex(OnPTestClickListener.VALUE_FIELD);
@@ -268,7 +300,6 @@ public class GroupMessengerActivity extends Activity {
                 if (!(cursor.isFirst() && cursor.isLast())) {
                     Log.e(TAG, "Wrong number of rows in cursor");
                 } else {
-                    /* Append this i-th timestamp to the text */
                     messageText = cursor.getString(valueIndex);
                 }
             }

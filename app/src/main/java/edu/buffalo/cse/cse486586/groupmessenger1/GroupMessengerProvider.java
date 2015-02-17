@@ -9,6 +9,7 @@ import android.database.MatrixCursor;
 import android.net.Uri;
 import android.util.Log;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -78,7 +79,7 @@ public class GroupMessengerProvider extends ContentProvider {
     public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs,
             String sortOrder) {
         /*
-         * TODO: You need to implement this method. Note that you need to return a Cursor object
+         * You need to implement this method. Note that you need to return a Cursor object
          * with the right format. If the formatting is not correct, then it is not going to work.
          * 
          * If you use SQLite, whatever is returned from SQLite is a Cursor object. However, you
@@ -98,10 +99,12 @@ public class GroupMessengerProvider extends ContentProvider {
         /* Read from the file. "selection" is the key */
         String fileContent = readFromInternalStorage(selection + fileExtension);
 
-        String[] columnValues = new String[2];
-        columnValues[0] = selection;
-        columnValues[1] = fileContent;
-        matrixCursor.addRow(columnValues);
+        if (fileContent != null && fileContent.length() > 0) {
+            String[] columnValues = new String[2];
+            columnValues[0] = selection;
+            columnValues[1] = fileContent;
+            matrixCursor.addRow(columnValues);
+        }
 
         Log.v("query", selection);
         return matrixCursor;
@@ -120,11 +123,16 @@ public class GroupMessengerProvider extends ContentProvider {
     private String readFromInternalStorage(String fileName) {
         String contentOfFile = "";
         try {
-            FileInputStream stream = context.openFileInput(fileName);
-            int byteContent;
-            while ((byteContent = stream.read()) != -1)
-                contentOfFile += (char)byteContent;
-            stream.close();
+            File file = context.getFileStreamPath(fileName);
+            if (file.exists()) {
+                FileInputStream stream = context.openFileInput(fileName);
+                int byteContent;
+                if (stream != null) {
+                    while ((byteContent = stream.read()) != -1)
+                        contentOfFile += (char) byteContent;
+                    stream.close();
+                }
+            }
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } catch (IOException e) {
