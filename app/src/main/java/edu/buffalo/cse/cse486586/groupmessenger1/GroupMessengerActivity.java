@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
+import android.database.Cursor;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.telephony.TelephonyManager;
@@ -16,9 +17,12 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
 
@@ -32,6 +36,7 @@ public class GroupMessengerActivity extends Activity {
     static final int SERVER_PORT = 10000;
     static final String[] REMOTE_PORT = {"11108", "11112", "11116", "11120", "11124"};
     static int timeKeeper = 0;
+    TextView textView = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,8 +45,8 @@ public class GroupMessengerActivity extends Activity {
 
         /* TextView: To display all messages.
         *  EditText: To type in a message */
-        TextView tv = (TextView) findViewById(R.id.textView1);
-        tv.setMovementMethod(new ScrollingMovementMethod());
+        textView = (TextView) findViewById(R.id.textView1);
+        textView.setMovementMethod(new ScrollingMovementMethod());
         final EditText editText = (EditText) findViewById(R.id.editText1);
         final Button sendButton = (Button) findViewById(R.id.button4);
 
@@ -54,6 +59,14 @@ public class GroupMessengerActivity extends Activity {
         String portStr = tel.getLine1Number().substring(tel.getLine1Number().length() - 4);
         final String myPort = String.valueOf((Integer.parseInt(portStr) * 2));
 
+        try {
+            /* Create a server socket and a thread (AsyncTask) that listens on the server port */
+            ServerSocket serverSocket = new ServerSocket(SERVER_PORT);
+            new ServerTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, serverSocket);
+        } catch (IOException e) {
+            Log.e(TAG, "Can't create a ServerSocket");
+            return;
+        }
 
         /*
          * Register an OnClickListener for the "Send" button.
@@ -98,7 +111,7 @@ public class GroupMessengerActivity extends Activity {
          * OnPTestClickListener demonstrates how to access a ContentProvider.
          */
         findViewById(R.id.button1).setOnClickListener(
-                new OnPTestClickListener(tv, getContentResolver(), this));
+                new OnPTestClickListener(textView, getContentResolver(), this));
 
     }
 
@@ -128,18 +141,10 @@ public class GroupMessengerActivity extends Activity {
 
             try {
                 /* Get the message and port no. */
-                String msgToSend = timeKeeper + " " + msgs[0];
+                String msgToSend = String.valueOf(timeKeeper) + " " + msgs[0];
 
                 for (int remoteHostNumber = 0; remoteHostNumber < REMOTE_PORT.length; remoteHostNumber++) {
                     String remotePort = REMOTE_PORT[remoteHostNumber];
-
-                    /* TODO: Move this to server side, because this instance will message itself too */
-                    /* Write to content provider here */
-                    ContentResolver contentResolver = getContentResolver();
-                    ContentValues contentValue = new ContentValues();
-                    contentValue.put(OnPTestClickListener.KEY_FIELD, timeKeeper);
-                    contentValue.put(OnPTestClickListener.VALUE_FIELD, msgToSend);
-                    contentResolver.insert(OnPTestClickListener.buildUri(OnPTestClickListener.URI_SCHEME, OnPTestClickListener.URI), contentValue);
 
                     socket = new Socket(InetAddress.getByAddress(new byte[]{10, 0, 2, 2}),
                             Integer.parseInt(remotePort));
@@ -169,5 +174,79 @@ public class GroupMessengerActivity extends Activity {
         }
     }
 
+    /**
+     * ServerTask is an AsyncTask that should handle incoming messages. It is created by
+     * ServerTask.executeOnExecutor() call in SimpleMessengerActivity.
+     * <p/>
+     * Please make sure you understand how AsyncTask works by reading
+     * http://developer.android.com/reference/android/os/AsyncTask.html
+     *
+     * @author stevko
+     */
+    private class ServerTask extends AsyncTask<ServerSocket, String, Void> {
 
+        @Override
+        protected Void doInBackground(ServerSocket... sockets) {
+            ServerSocket serverSocket = sockets[0];
+
+            /* Server code that receives messages and passes them to onProgressUpdate(). */
+            Socket clientSocket;
+            DataInputStream inputStream;
+            String messages[] = new String[1000];
+
+            try {
+                while (true) {
+                    clientSocket = serverSocket.accept();
+                    inputStream = new DataInputStream(clientSocket.getInputStream());
+
+                    if (inputStream != null && (messages[0] = inputStream.readLine()) != null) {
+                        publishProgress(messages);
+                    }
+                }
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            return null;
+        }
+
+        protected void onProgressUpdate(String... strings) {
+
+            /* Extract the timestamp and message from the received string */
+            String strReceived = strings[0].trim();
+            String timeStamp = strReceived.substring(0, strReceived.indexOf(" "));
+            String message = strReceived.substring(strReceived.indexOf(" ") + 1, strReceived.length());
+            int timeStampIncoming = Integer.parseInt(timeStamp);
+            if (timeKeeper < timeStampIncoming)
+                timeKeeper = timeStampIncoming;
+
+            /* TODO: Handle incoming messages with the same time stamp.
+               TODO: Query with key = timeStamp. If found, append this timestamp to the existing one */
+
+            /* Write what was received to the content provider */
+            ContentResolver contentResolver = getContentResolver();
+            ContentValues contentValue = new ContentValues();
+            contentValue.put(OnPTestClickListener.KEY_FIELD, timeStamp);
+            contentValue.put(OnPTestClickListener.VALUE_FIELD, message);
+            contentResolver.insert(OnPTestClickListener.buildUri(OnPTestClickListener.URI_SCHEME, OnPTestClickListener.URI), contentValue);
+
+
+
+            /* Refresh the content of the TextView */
+            StringBuilder allMessages = new StringBuilder("");
+            for (int i=0; i <= timeKeeper; i++) {
+                Cursor resultCursor = contentResolver.query(OnPTestClickListener.buildUri(OnPTestClickListener.URI_SCHEME, OnPTestClickListener.URI), null, );
+
+                /* TODO: Append the message this i-th timestamp */
+                allMessages.append("");
+            }
+
+            /* Display all the messages onto the text-view */
+            textView.setText(allMessages);
+            return;
+        }
+    }
 }

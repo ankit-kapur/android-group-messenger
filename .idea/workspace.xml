@@ -18,10 +18,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="0f664d27-e433-453a-b3cd-b905b114d6ab" name="Default" comment="">
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/app/src/main/java/edu/buffalo/cse/cse486586/groupmessenger1/SimpleMessengerActivity.java" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/app/src/main/java/edu/buffalo/cse/cse486586/groupmessenger1/GroupMessengerActivity.java" afterPath="$PROJECT_DIR$/app/src/main/java/edu/buffalo/cse/cse486586/groupmessenger1/GroupMessengerActivity.java" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/app/src/main/java/edu/buffalo/cse/cse486586/groupmessenger1/OnPTestClickListener.java" afterPath="$PROJECT_DIR$/app/src/main/java/edu/buffalo/cse/cse486586/groupmessenger1/OnPTestClickListener.java" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/app/src/main/res/layout/activity_group_messenger.xml" afterPath="$PROJECT_DIR$/app/src/main/res/layout/activity_group_messenger.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
     </list>
     <ignored path="GroupMessenger.iws" />
@@ -48,14 +45,14 @@
       <file leaf-file-name="GroupMessengerActivity.java" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/app/src/main/java/edu/buffalo/cse/cse486586/groupmessenger1/GroupMessengerActivity.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.8064516" vertical-offset="2628" max-vertical-offset="3222">
-              <caret line="171" column="4" selection-start-line="171" selection-start-column="4" selection-end-line="171" selection-end-column="4" />
+            <state vertical-scroll-proportion="0.7741935" vertical-offset="3924" max-vertical-offset="4644">
+              <caret line="242" column="25" selection-start-line="242" selection-start-column="25" selection-end-line="242" selection-end-column="25" />
               <folding>
                 <element signature="imports" expanded="true" />
-                <element signature="e#2389#2799#0" expanded="true" />
-                <element signature="e#2787#2788#0" expanded="true" />
-                <element signature="e#3195#3839#0" expanded="true" />
-                <element signature="e#3828#3829#0" expanded="true" />
+                <element signature="e#2945#3355#0" expanded="true" />
+                <element signature="e#3343#3344#0" expanded="true" />
+                <element signature="e#3751#4395#0" expanded="true" />
+                <element signature="e#4384#4385#0" expanded="true" />
               </folding>
             </state>
           </provider>
@@ -64,8 +61,8 @@
       <file leaf-file-name="SimpleMessengerActivity.java" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/app/src/main/java/edu/buffalo/cse/cse486586/groupmessenger1/SimpleMessengerActivity.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0" vertical-offset="3587" max-vertical-offset="4806">
-              <caret line="211" column="5" selection-start-line="141" selection-start-column="4" selection-end-line="211" selection-end-column="5" />
+            <state vertical-scroll-proportion="0.0" vertical-offset="3101" max-vertical-offset="4806">
+              <caret line="199" column="42" selection-start-line="199" selection-start-column="42" selection-end-line="199" selection-end-column="42" />
               <folding>
                 <element signature="imports" expanded="true" />
                 <element signature="e#4765#6409#0" expanded="true" />
@@ -78,8 +75,8 @@
       <file leaf-file-name="OnPTestClickListener.java" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/app/src/main/java/edu/buffalo/cse/cse486586/groupmessenger1/OnPTestClickListener.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0" vertical-offset="854" max-vertical-offset="3276">
-              <caret line="58" column="18" selection-start-line="58" selection-start-column="18" selection-end-line="58" selection-end-column="18" />
+            <state vertical-scroll-proportion="0.0" vertical-offset="2347" max-vertical-offset="3276">
+              <caret line="137" column="38" selection-start-line="137" selection-start-column="16" selection-end-line="137" selection-end-column="38" />
               <folding>
                 <element signature="imports" expanded="true" />
               </folding>
@@ -963,7 +960,11 @@
       <created>1424141257365</created>
       <updated>1424141257365</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="Made client that multicasts. Need to make server.">
+      <created>1424146680703</created>
+      <updated>1424146680703</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="TodoView" selected-index="4">
@@ -1037,7 +1038,8 @@
       <TodoPanelSettings />
     </option>
     <MESSAGE value="Still working on multi-cast. Read/write to content provider works." />
-    <option name="LAST_COMMIT_MESSAGE" value="Still working on multi-cast. Read/write to content provider works." />
+    <MESSAGE value="Made client that multicasts. Need to make server." />
+    <option name="LAST_COMMIT_MESSAGE" value="Made client that multicasts. Need to make server." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -1088,10 +1090,10 @@
           <caret line="33" column="35" selection-start-line="33" selection-start-column="35" selection-end-line="33" selection-end-column="35" />
           <folding>
             <element signature="imports" expanded="true" />
-            <element signature="e#2389#2799#0" expanded="true" />
-            <element signature="e#2787#2788#0" expanded="true" />
-            <element signature="e#3195#3839#0" expanded="true" />
-            <element signature="e#3828#3829#0" expanded="true" />
+            <element signature="e#2945#3355#0" expanded="true" />
+            <element signature="e#3343#3344#0" expanded="true" />
+            <element signature="e#3751#4395#0" expanded="true" />
+            <element signature="e#4384#4385#0" expanded="true" />
           </folding>
         </state>
       </provider>
@@ -1128,10 +1130,10 @@
           <caret line="19" column="58" selection-start-line="19" selection-start-column="58" selection-end-line="19" selection-end-column="58" />
           <folding>
             <element signature="imports" expanded="true" />
-            <element signature="e#2389#2799#0" expanded="true" />
-            <element signature="e#2787#2788#0" expanded="true" />
-            <element signature="e#3195#3839#0" expanded="true" />
-            <element signature="e#3828#3829#0" expanded="true" />
+            <element signature="e#2945#3355#0" expanded="true" />
+            <element signature="e#3343#3344#0" expanded="true" />
+            <element signature="e#3751#4395#0" expanded="true" />
+            <element signature="e#4384#4385#0" expanded="true" />
           </folding>
         </state>
       </provider>
@@ -1168,10 +1170,10 @@
           <caret line="38" column="36" selection-start-line="38" selection-start-column="36" selection-end-line="38" selection-end-column="36" />
           <folding>
             <element signature="imports" expanded="true" />
-            <element signature="e#2389#2799#0" expanded="true" />
-            <element signature="e#2787#2788#0" expanded="true" />
-            <element signature="e#3195#3839#0" expanded="true" />
-            <element signature="e#3828#3829#0" expanded="true" />
+            <element signature="e#2945#3355#0" expanded="true" />
+            <element signature="e#3343#3344#0" expanded="true" />
+            <element signature="e#3751#4395#0" expanded="true" />
+            <element signature="e#4384#4385#0" expanded="true" />
           </folding>
         </state>
       </provider>
@@ -1208,10 +1210,10 @@
           <caret line="38" column="36" selection-start-line="38" selection-start-column="36" selection-end-line="38" selection-end-column="36" />
           <folding>
             <element signature="imports" expanded="true" />
-            <element signature="e#2389#2799#0" expanded="true" />
-            <element signature="e#2787#2788#0" expanded="true" />
-            <element signature="e#3195#3839#0" expanded="true" />
-            <element signature="e#3828#3829#0" expanded="true" />
+            <element signature="e#2945#3355#0" expanded="true" />
+            <element signature="e#3343#3344#0" expanded="true" />
+            <element signature="e#3751#4395#0" expanded="true" />
+            <element signature="e#4384#4385#0" expanded="true" />
           </folding>
         </state>
       </provider>
@@ -1253,10 +1255,10 @@
           <caret line="38" column="36" selection-start-line="38" selection-start-column="36" selection-end-line="38" selection-end-column="36" />
           <folding>
             <element signature="imports" expanded="true" />
-            <element signature="e#2389#2799#0" expanded="true" />
-            <element signature="e#2787#2788#0" expanded="true" />
-            <element signature="e#3195#3839#0" expanded="true" />
-            <element signature="e#3828#3829#0" expanded="true" />
+            <element signature="e#2945#3355#0" expanded="true" />
+            <element signature="e#3343#3344#0" expanded="true" />
+            <element signature="e#3751#4395#0" expanded="true" />
+            <element signature="e#4384#4385#0" expanded="true" />
           </folding>
         </state>
       </provider>
@@ -1298,10 +1300,10 @@
           <caret line="38" column="36" selection-start-line="38" selection-start-column="36" selection-end-line="38" selection-end-column="36" />
           <folding>
             <element signature="imports" expanded="true" />
-            <element signature="e#2389#2799#0" expanded="true" />
-            <element signature="e#2787#2788#0" expanded="true" />
-            <element signature="e#3195#3839#0" expanded="true" />
-            <element signature="e#3828#3829#0" expanded="true" />
+            <element signature="e#2945#3355#0" expanded="true" />
+            <element signature="e#3343#3344#0" expanded="true" />
+            <element signature="e#3751#4395#0" expanded="true" />
+            <element signature="e#4384#4385#0" expanded="true" />
           </folding>
         </state>
       </provider>
@@ -1338,10 +1340,10 @@
           <caret line="14" column="13" selection-start-line="14" selection-start-column="13" selection-end-line="14" selection-end-column="13" />
           <folding>
             <element signature="imports" expanded="true" />
-            <element signature="e#2389#2799#0" expanded="true" />
-            <element signature="e#2787#2788#0" expanded="true" />
-            <element signature="e#3195#3839#0" expanded="true" />
-            <element signature="e#3828#3829#0" expanded="true" />
+            <element signature="e#2945#3355#0" expanded="true" />
+            <element signature="e#3343#3344#0" expanded="true" />
+            <element signature="e#3751#4395#0" expanded="true" />
+            <element signature="e#4384#4385#0" expanded="true" />
           </folding>
         </state>
       </provider>
@@ -1491,8 +1493,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/app/src/main/java/edu/buffalo/cse/cse486586/groupmessenger1/OnPTestClickListener.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0" vertical-offset="854" max-vertical-offset="3276">
-          <caret line="58" column="18" selection-start-line="58" selection-start-column="18" selection-end-line="58" selection-end-column="18" />
+        <state vertical-scroll-proportion="0.0" vertical-offset="2347" max-vertical-offset="3276">
+          <caret line="137" column="38" selection-start-line="137" selection-start-column="16" selection-end-line="137" selection-end-column="38" />
           <folding>
             <element signature="imports" expanded="true" />
           </folding>
@@ -1501,8 +1503,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/app/src/main/java/edu/buffalo/cse/cse486586/groupmessenger1/SimpleMessengerActivity.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0" vertical-offset="3587" max-vertical-offset="4806">
-          <caret line="211" column="5" selection-start-line="141" selection-start-column="4" selection-end-line="211" selection-end-column="5" />
+        <state vertical-scroll-proportion="0.0" vertical-offset="3101" max-vertical-offset="4806">
+          <caret line="199" column="42" selection-start-line="199" selection-start-column="42" selection-end-line="199" selection-end-column="42" />
           <folding>
             <element signature="imports" expanded="true" />
             <element signature="e#4765#6409#0" expanded="true" />
@@ -1513,14 +1515,14 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/app/src/main/java/edu/buffalo/cse/cse486586/groupmessenger1/GroupMessengerActivity.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.8064516" vertical-offset="2628" max-vertical-offset="3222">
-          <caret line="171" column="4" selection-start-line="171" selection-start-column="4" selection-end-line="171" selection-end-column="4" />
+        <state vertical-scroll-proportion="0.7741935" vertical-offset="3924" max-vertical-offset="4644">
+          <caret line="242" column="25" selection-start-line="242" selection-start-column="25" selection-end-line="242" selection-end-column="25" />
           <folding>
             <element signature="imports" expanded="true" />
-            <element signature="e#2389#2799#0" expanded="true" />
-            <element signature="e#2787#2788#0" expanded="true" />
-            <element signature="e#3195#3839#0" expanded="true" />
-            <element signature="e#3828#3829#0" expanded="true" />
+            <element signature="e#2945#3355#0" expanded="true" />
+            <element signature="e#3343#3344#0" expanded="true" />
+            <element signature="e#3751#4395#0" expanded="true" />
+            <element signature="e#4384#4385#0" expanded="true" />
           </folding>
         </state>
       </provider>
