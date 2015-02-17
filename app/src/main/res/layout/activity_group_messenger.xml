@@ -11,7 +11,8 @@
         android:layout_alignParentBottom="true"
         android:layout_alignParentLeft="true"
         android:hint="@string/edittext_hint"
-        android:maxLines="5" >
+        android:maxLines="5"
+        android:layout_toStartOf="@+id/button4">
 
         <requestFocus />
     </EditText>

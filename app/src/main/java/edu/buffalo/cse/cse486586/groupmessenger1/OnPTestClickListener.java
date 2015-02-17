@@ -10,11 +10,6 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.TextView;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-
 /**
  * OnPTestClickListener demonstrates how to access a ContentProvider. First, please read 
  * 
@@ -39,20 +34,19 @@ public class OnPTestClickListener implements OnClickListener {
     private static final int TEST_CNT = 50;
     static final String KEY_FIELD = "key";
     static final String VALUE_FIELD = "value";
+    static final String URI_SCHEME = "content";
+    static final String URI = "edu.buffalo.cse.cse486586.groupmessenger1.provider";
 
     private final TextView mTextView;
     private final ContentResolver mContentResolver;
     private final Uri mUri;
     private final ContentValues[] mContentValues;
-    private final Context context;
 
     public OnPTestClickListener(TextView _tv, ContentResolver _cr, Context _context) {
         mTextView = _tv;
         mContentResolver = _cr;
-        mUri = buildUri("content", "edu.buffalo.cse.cse486586.groupmessenger1.provider");
+        mUri = buildUri(URI_SCHEME, URI);
         mContentValues = initTestValues();
-        context = _context;
-
     }
 
     /**
@@ -62,7 +56,7 @@ public class OnPTestClickListener implements OnClickListener {
      * @param authority
      * @return the URI
      */
-    private Uri buildUri(String scheme, String authority) {
+    public static Uri buildUri(String scheme, String authority) {
         Uri.Builder uriBuilder = new Uri.Builder();
         uriBuilder.authority(authority);
         uriBuilder.scheme(scheme);
@@ -103,9 +97,8 @@ public class OnPTestClickListener implements OnClickListener {
      */
     private boolean testInsert() {
         try {
-            for (int i = 0; i < TEST_CNT; i++) {
+            for (int i = 0; i < TEST_CNT; i++)
                 mContentResolver.insert(mUri, mContentValues[i]);
-            }
         } catch (Exception e) {
             Log.e(TAG, e.toString());
             return false;
