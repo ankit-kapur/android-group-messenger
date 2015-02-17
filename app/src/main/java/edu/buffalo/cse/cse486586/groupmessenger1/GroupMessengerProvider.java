@@ -107,8 +107,6 @@ public class GroupMessengerProvider extends ContentProvider {
         return matrixCursor;
     }
 
-
-
     private void writeToInternalStorage(String fileName, String contentOfFile) {
         try {
             FileOutputStream stream = context.openFileOutput(fileName, Context.MODE_WORLD_WRITEABLE);

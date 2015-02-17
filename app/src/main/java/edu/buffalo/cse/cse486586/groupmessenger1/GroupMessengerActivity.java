@@ -5,6 +5,7 @@ import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.telephony.TelephonyManager;
@@ -65,6 +66,7 @@ public class GroupMessengerActivity extends Activity {
             new ServerTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, serverSocket);
         } catch (IOException e) {
             Log.e(TAG, "Can't create a ServerSocket");
+            e.printStackTrace();
             return;
         }
 
@@ -216,6 +218,7 @@ public class GroupMessengerActivity extends Activity {
         protected void onProgressUpdate(String... strings) {
 
             /* Extract the timestamp and message from the received string */
+            ContentResolver contentResolver = getContentResolver();
             String strReceived = strings[0].trim();
             String timeStamp = strReceived.substring(0, strReceived.indexOf(" "));
             String message = strReceived.substring(strReceived.indexOf(" ") + 1, strReceived.length());
@@ -223,29 +226,45 @@ public class GroupMessengerActivity extends Activity {
             if (timeKeeper < timeStampIncoming)
                 timeKeeper = timeStampIncoming;
 
+            /* Build URI */
+            Uri uri = OnPTestClickListener.buildUri(OnPTestClickListener.URI_SCHEME, OnPTestClickListener.URI);
+
             /* TODO: Handle incoming messages with the same time stamp.
                TODO: Query with key = timeStamp. If found, append this timestamp to the existing one */
+            Cursor checkCursor = contentResolver.query(uri, null, timeStamp, null, null);
 
             /* Write what was received to the content provider */
-            ContentResolver contentResolver = getContentResolver();
             ContentValues contentValue = new ContentValues();
             contentValue.put(OnPTestClickListener.KEY_FIELD, timeStamp);
             contentValue.put(OnPTestClickListener.VALUE_FIELD, message);
-            contentResolver.insert(OnPTestClickListener.buildUri(OnPTestClickListener.URI_SCHEME, OnPTestClickListener.URI), contentValue);
-
-
+            contentResolver.insert(uri, contentValue);
 
             /* Refresh the content of the TextView */
             StringBuilder allMessages = new StringBuilder("");
             for (int i=0; i <= timeKeeper; i++) {
-                Cursor resultCursor = contentResolver.query(OnPTestClickListener.buildUri(OnPTestClickListener.URI_SCHEME, OnPTestClickListener.URI), null, );
+                Cursor resultCursor = contentResolver.query(uri, null, String.valueOf(i), null, null);
+                if (resultCursor != null) {
+                    int keyIndex = resultCursor.getColumnIndex(OnPTestClickListener.KEY_FIELD);
+                    int valueIndex = resultCursor.getColumnIndex(OnPTestClickListener.VALUE_FIELD);
 
-                /* TODO: Append the message this i-th timestamp */
-                allMessages.append("");
+                    if (keyIndex != -1 && valueIndex != -1) {
+
+                        resultCursor.moveToFirst();
+
+                        if (!(resultCursor.isFirst() && resultCursor.isLast())) {
+                            Log.e(TAG, "Wrong number of rows in cursor");
+                        } else {
+                            /* Append this i-th timestamp to the text */
+                            String messageText = resultCursor.getString(valueIndex) + "\n";
+                            allMessages.append(messageText);
+                        }
+                    }
+                    resultCursor.close();
+                }
             }
 
             /* Display all the messages onto the text-view */
-            textView.setText(allMessages);
+            textView.setText(allMessages.toString());
             return;
         }
     }
