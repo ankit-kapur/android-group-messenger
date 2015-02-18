@@ -163,12 +163,13 @@ public class GroupMessengerActivity extends Activity {
             DataOutputStream outputStream;
 
             /* Increment the timer */
-            timeKeeper++;
-            writeTimeKeeper();
+//            timeKeeper++;
+//            writeTimeKeeper();
 
             try {
                 /* Timestamp and message-text */
-                String msgToSend = String.valueOf(timeKeeper) + " " + msgs[0];
+//                String msgToSend = String.valueOf(timeKeeper) + " " + msgs[0];
+                String msgToSend = msgs[0];
 
                 for (int remoteHostNumber = 0; remoteHostNumber < REMOTE_PORT.length; remoteHostNumber++) {
                     String remotePort = REMOTE_PORT[remoteHostNumber];
@@ -245,25 +246,32 @@ public class GroupMessengerActivity extends Activity {
             /* Extract the timestamp and message from the received string */
             ContentResolver contentResolver = getContentResolver();
             String strReceived = strings[0].trim();
-            if (strReceived != null && strReceived.indexOf(" ") > -1) {
-                String timeStamp = strReceived.substring(0, strReceived.indexOf(" "));
-                String message = strReceived.substring(strReceived.indexOf(" ") + 1, strReceived.length());
-                int timeStampIncoming = Integer.parseInt(timeStamp);
-                if (timeKeeper < timeStampIncoming) {
-                    timeKeeper = timeStampIncoming;
-                    writeTimeKeeper();
-                }
+            if (strReceived != null) {
+                    //&& strReceived.indexOf(" ") > -1) {
+//                String timeStamp = strReceived.substring(0, strReceived.indexOf(" "));
+//                String message = strReceived.substring(strReceived.indexOf(" ") + 1, strReceived.length());
+//                int timeStampIncoming = Integer.parseInt(timeStamp);
+//                if (timeKeeper < timeStampIncoming) {
+//                    timeKeeper = timeStampIncoming;
+//                    writeTimeKeeper();
+//                }
+
+                String message = strReceived;
+
+                /* Increment and write the time */
+                timeKeeper++;
+                writeTimeKeeper();
 
                 /* Handle incoming messages with the same time stamp.
                Query with key = timeStamp. If found, append this message to the existing one */
-                Cursor checkCursor = contentResolver.query(uri, null, timeStamp, null, null);
-                String checkText = getTextFromCursor(checkCursor);
-                if (checkText != null && checkText.length() > 0)
-                    message = checkText + "\n" + message;
+//                Cursor checkCursor = contentResolver.query(uri, null, timeStamp, null, null);
+//                String checkText = getTextFromCursor(checkCursor);
+//                if (checkText != null && checkText.length() > 0)
+//                    message = checkText + "\n" + message;
 
                 /* Write what was received to the content provider */
                 ContentValues contentValue = new ContentValues();
-                contentValue.put(OnPTestClickListener.KEY_FIELD, timeStamp);
+                contentValue.put(OnPTestClickListener.KEY_FIELD, String.valueOf(timeKeeper));
                 contentValue.put(OnPTestClickListener.VALUE_FIELD, message);
                 contentResolver.insert(uri, contentValue);
 

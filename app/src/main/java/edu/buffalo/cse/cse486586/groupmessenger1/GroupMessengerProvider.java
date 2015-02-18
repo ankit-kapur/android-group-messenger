@@ -106,7 +106,7 @@ public class GroupMessengerProvider extends ContentProvider {
             matrixCursor.addRow(columnValues);
         }
 
-        Log.v("query", selection);
+        Log.v("query", selection + " --> " + fileContent);
         return matrixCursor;
     }
 
