@@ -40,8 +40,6 @@ public class GroupMessengerProvider extends ContentProvider {
 
     @Override
     public boolean onCreate() {
-        /* If you need to perform any one-time initialization task,
-           please do it here. */
 
         /* Get context (to be used in the writer/reader methods */
         context = getContext();
@@ -52,7 +50,7 @@ public class GroupMessengerProvider extends ContentProvider {
     @Override
     public Uri insert(Uri uri, ContentValues values) {
         /*
-         * TODO: You need to implement this method. Note that values will have two columns (a key
+         * You need to implement this method. Note that values will have two columns (a key
          * column and a value column) and one row that contains the actual (key, value) pair to be
          * inserted.
          * 

@@ -125,16 +125,6 @@ public class OnPTestClickListener implements OnClickListener {
                 String key = (String) mContentValues[i].get(KEY_FIELD);
                 String val = (String) mContentValues[i].get(VALUE_FIELD);
 
-                /*
-                Cursor resultCursor = getContentResolver().query(
-                    providerUri,    // assume we already created a Uri object with our provider URI
-                    null,                // no need to support the projection parameter
-                    “key-to-read”,    // we provide the key directly as the selection parameter
-                    null,                // no need to support the selectionArgs parameter
-                    null                 // no need to support the sortOrder parameter
-                );
-                 */
-
                 Cursor resultCursor = mContentResolver.query(mUri, null, key, null, null);
                 if (resultCursor == null) {
                     Log.e(TAG, "Result null");
