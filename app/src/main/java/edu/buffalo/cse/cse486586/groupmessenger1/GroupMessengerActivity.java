@@ -18,9 +18,13 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -36,9 +40,8 @@ public class GroupMessengerActivity extends Activity {
     static final String TAG = GroupMessengerActivity.class.getSimpleName();
     static final int SERVER_PORT = 10000;
     static final String[] REMOTE_PORT = {"11108", "11112", "11116", "11120", "11124"};
-    static final String timeKeeperFileName = "timekeeper";
 
-    int timeKeeper = -1;
+    int timeKeeper = 0;
     TextView textView = null;
     Uri uri;
 
@@ -56,15 +59,7 @@ public class GroupMessengerActivity extends Activity {
         textView.setMovementMethod(new ScrollingMovementMethod());
         final EditText editText = (EditText) findViewById(R.id.editText1);
         final Button sendButton = (Button) findViewById(R.id.button4);
-
-        /*
-         * Calculate the port number that this AVD listens on.
-         * It is just a hack that I came up with to get around the networking limitations of AVDs.
-         * The explanation is provided in the PA1 spec.
-         */
-        TelephonyManager tel = (TelephonyManager) this.getSystemService(Context.TELEPHONY_SERVICE);
-        String portStr = tel.getLine1Number().substring(tel.getLine1Number().length() - 4);
-        final String myPort = String.valueOf((Integer.parseInt(portStr) * 2));
+        final Button showDataButton = (Button) findViewById(R.id.showdatabutton);
 
         try {
             /* Create a server socket and a thread (AsyncTask) that listens on the server port */
@@ -91,6 +86,22 @@ public class GroupMessengerActivity extends Activity {
                  new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, msg);
              }
          });
+
+//        showDataButton.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                StringBuilder allMessages = new StringBuilder("");
+//                for (int i=0; i <= timeKeeper; i++) {
+//                    Cursor resultCursor = getContentResolver().query(uri, null, String.valueOf(i), null, null);
+//                    String cursorText = getTextFromCursor(resultCursor);
+//                    if (cursorText != null && cursorText.length() > 0)
+//                        allMessages.append(String.valueOf(i) + " ==--> " + cursorText + "\n");
+//                }
+//
+//                Log.d("DEBUG", "Messages here...\n" + allMessages.toString());
+//                Log.d("DEBUG", "Timekeeper: " + timeKeeper);
+//            }
+//        });
 
         /*
          * Register an OnKeyListener for the input box. OnKeyListener is an event handler that
@@ -202,11 +213,25 @@ public class GroupMessengerActivity extends Activity {
             try {
                 while (true) {
                     clientSocket = serverSocket.accept();
-                    inputStream = new DataInputStream(clientSocket.getInputStream());
+//                    inputStream = new DataInputStream(clientSocket.getInputStream());
 
-                    if (inputStream != null && (messages[0] = inputStream.readLine()) != null) {
+                    BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                    String message = bufferedReader.readLine();
+
+//                    if (inputStream != null && (messages[0] = inputStream.readLine()) != null) {
+
+
+                /* Write what was received to the content provider */
+                        ContentValues contentValue = new ContentValues();
+                        contentValue.put(OnPTestClickListener.KEY_FIELD, Integer.toString(timeKeeper));
+                        contentValue.put(OnPTestClickListener.VALUE_FIELD, message);
+                        getContentResolver().insert(uri, contentValue);
+
+                        /* Increment the timer */
+                        timeKeeper++;
+
                         publishProgress(messages);
-                    }
+//                    }
                 }
 
             } catch (IOException e) {
@@ -221,24 +246,24 @@ public class GroupMessengerActivity extends Activity {
         protected void onProgressUpdate(String... strings) {
 
             /* Extract the timestamp and message from the received string */
-            ContentResolver contentResolver = getContentResolver();
-            String strReceived = strings[0].trim();
-            if (strReceived != null) {
-
-                String message = strReceived;
-
-                /* Increment and write the time */
-                timeKeeper++;
-
-                /* Write what was received to the content provider */
-                ContentValues contentValue = new ContentValues();
-                contentValue.put(OnPTestClickListener.KEY_FIELD, String.valueOf(timeKeeper));
-                contentValue.put(OnPTestClickListener.VALUE_FIELD, message);
-                contentResolver.insert(uri, contentValue);
+//            String strReceived = strings[0].trim();
+//            if (strReceived != null) {
+//
+//                String message = strReceived;
+//
+//                /* Write what was received to the content provider */
+//                ContentValues contentValue = new ContentValues();
+//                contentValue.put(OnPTestClickListener.KEY_FIELD, Integer.toString(timeKeeper));
+//                contentValue.put(OnPTestClickListener.VALUE_FIELD, message);
+//                getContentResolver().insert(uri, contentValue);
 
                 /* Refresh the content of the TextView */
                 showChatOnTextView();
-            }
+
+                /* Increment the timer */
+//                timeKeeper++;
+//            }
+
             return;
         }
     }
