@@ -43,7 +43,7 @@
         android:layout_below="@+id/button1"
         android:fadeScrollbars="true"
         android:gravity="bottom"
-        android:maxLines="15"
+        android:maxLines="50"
         android:scrollbars="vertical" />
 
 </RelativeLayout><!-- From: file:/home/ankitkap/distributedsystems/pa2_partb/GroupMessenger2/app/src/main/res/layout/activity_group_messenger.xml -->

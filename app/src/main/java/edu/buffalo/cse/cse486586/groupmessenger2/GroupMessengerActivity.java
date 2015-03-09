@@ -28,8 +28,11 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.TreeMap;
 
 /**
@@ -39,8 +42,9 @@ import java.util.TreeMap;
  */
 public class GroupMessengerActivity extends Activity {
 
-    /* Keeps track of proposals received */
-    List<Message> proposalsReceived = new ArrayList<>();
+    /* Keeps track of proposals received.
+     * key = messageId, value = messageObject */
+    static Map<String, List<Message>> proposalsReceived = new HashMap<>();
 
     /* How many messages have been sent by this device */
     static int messagesSent = 0;
@@ -48,11 +52,14 @@ public class GroupMessengerActivity extends Activity {
     /* Keeps track of the last message delivered */
     static int seqNumOfLastDelivered = 0;
 
+    /* My port number (this device's port number) */
+    static String myPortNumber = null;
+
     /* Hold-back Queue (HBQ) and deliveryQueue
      * key = sequence no.
      * value = Message */
-    TreeMap<String, Message> holdBackQueue = new TreeMap<>();
-    TreeMap<String, Message> deliveryQueue = new TreeMap<>();
+    static TreeMap<String, Message> holdBackQueue = new TreeMap<>(new CustomComparator());
+    static TreeMap<String, Message> deliveryQueue = new TreeMap<>(new CustomComparator());
 
     static final String TAG = GroupMessengerActivity.class.getSimpleName();
     final int SERVER_PORT = 10000;
@@ -83,7 +90,7 @@ public class GroupMessengerActivity extends Activity {
          */
         TelephonyManager tel = (TelephonyManager) this.getSystemService(Context.TELEPHONY_SERVICE);
         String portStr = tel.getLine1Number().substring(tel.getLine1Number().length() - 4);
-        final String myPort = String.valueOf((Integer.parseInt(portStr) * 2));
+        myPortNumber = String.valueOf((Integer.parseInt(portStr) * 2));
 
         try {
             /* Create a server socket and a thread (AsyncTask) that listens on the server port */
@@ -107,10 +114,11 @@ public class GroupMessengerActivity extends Activity {
             @Override
             public void onClick(View v) {
                 String msg = editText.getText().toString() + "\n";
+//                String msg = editText.getText().toString();
                 editText.setText(""); // Reset the input box.
                 Log.d("DEBUG", "Send button clicked. Message: " + msg);
 
-                new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, String.valueOf(CommunicationMode.MESSAGE), msg, myPort);
+                new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, String.valueOf(CommunicationMode.MESSAGE), msg, myPortNumber);
             }
         });
 
@@ -131,7 +139,7 @@ public class GroupMessengerActivity extends Activity {
                     editText.setText(""); // Reset the input box.
                     Log.d("DEBUG", "Enter pressed. Sending message: " + msg);
 
-                    new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, String.valueOf(CommunicationMode.MESSAGE), msg, myPort);
+                    new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, String.valueOf(CommunicationMode.MESSAGE), msg, myPortNumber);
                     return true;
                 }
                 return false;
@@ -164,7 +172,8 @@ public class GroupMessengerActivity extends Activity {
             Cursor resultCursor = getContentResolver().query(uri, null, String.valueOf(i), null, null);
             String cursorText = getTextFromCursor(resultCursor);
             if (cursorText != null && cursorText.length() > 0)
-                allMessages.append(cursorText + "\n");
+                allMessages.append(i + ": " + cursorText + "\n");
+//                allMessages.append(cursorText);
         }
 
         /* Display all the messages onto the text-view */
@@ -182,6 +191,7 @@ public class GroupMessengerActivity extends Activity {
                 cursor.moveToFirst();
                 if (!(cursor.isFirst() && cursor.isLast())) {
                     Log.e(TAG, "Wrong number of rows in cursor");
+                    Log.e(TAG, "cursor.isFirst(): " + cursor.isFirst() + ", cursor.isLast(): " + cursor.isLast());
                 } else {
                     messageText = cursor.getString(valueIndex);
                 }
@@ -220,10 +230,11 @@ public class GroupMessengerActivity extends Activity {
                     String myPortNumber = (String) msgs[2];
                     String msgId = myPortNumber + "_" + messagesSent++;
 
-                    System.out.print("messagesSent ==> " + messagesSent);
+//                    Log.d("DEBUG", "messagesSent ==> " + (messagesSent - 1));
 
                     /* Wrap the message text and ID */
                     Message messageToSend = new Message(messageText, msgId, false);
+                    messageToSend.setCommunicationMode(CommunicationMode.MESSAGE);
 
                     /* B-multicast the message to all ports in the GROUP */
                     for (int remoteHostNumber = 0; remoteHostNumber < GROUP.length; remoteHostNumber++) {
@@ -232,12 +243,15 @@ public class GroupMessengerActivity extends Activity {
                         socket = new Socket(InetAddress.getByAddress(new byte[]{10, 0, 2, 2}),
                                 Integer.parseInt(remotePort));
 
+//                        Log.d("DEBUG", "Multicasting message to: " + remotePort);
+
                             /* Client code that sends out a message. */
                         if (socket != null) {
                             outputStream = new DataOutputStream(socket.getOutputStream());
                             if (outputStream != null) {
                                 objectOutputStream = new ObjectOutputStream(new BufferedOutputStream(outputStream));
                                 objectOutputStream.writeObject(messageToSend);
+                                objectOutputStream.flush();
                             }
                         }
                     }
@@ -248,7 +262,12 @@ public class GroupMessengerActivity extends Activity {
                     /* Extract port number from the message ID */
                     String destinationPort = messageId.substring(0, messageId.indexOf("_"));
 
-                    /* Send the PROPOSAL as a unicast */
+                    /* Set the mode as PROPOSAL (for the server to interpret it) */
+                    messageObject.setCommunicationMode(CommunicationMode.PROPOSAL);
+
+//                    Log.d("DEBUG", "[" + messageId + "] Sending proposal to " + destinationPort + " ==> " + messageObject.getProposedSeqNumber());
+
+                    /* Send the PROPOSAL as a UNICAST */
                     socket = new Socket(InetAddress.getByAddress(new byte[]{10, 0, 2, 2}),
                             Integer.parseInt(destinationPort));
                     if (socket != null) {
@@ -256,14 +275,18 @@ public class GroupMessengerActivity extends Activity {
                         if (outputStream != null) {
                             objectOutputStream = new ObjectOutputStream(new BufferedOutputStream(outputStream));
                             objectOutputStream.writeObject(messageObject);
+                            objectOutputStream.flush();
                         }
                     }
 
-                } else if (communicationMode == CommunicationMode.ACCEPTED_PROPOSAL) {
+                } else if (communicationMode == CommunicationMode.AGREED_PROPOSAL) {
 
+                    /* Do a B-Multicast to send the agreed proposal to everyone */
                     Message messageObjectToSend = (Message) msgs[1];
+                    messageObjectToSend.setCommunicationMode(CommunicationMode.AGREED_PROPOSAL);
 
-                    /* Do a B-Multicast to send the accepted proposal to everyone */
+//                    Log.d("DEBUG", "Sending agreed proposal to all: " + messageObjectToSend.getAgreedSeqNumber());
+
                     for (int remoteHostNumber = 0; remoteHostNumber < GROUP.length; remoteHostNumber++) {
                         String remotePort = GROUP[remoteHostNumber];
 
@@ -276,6 +299,7 @@ public class GroupMessengerActivity extends Activity {
                             if (outputStream != null) {
                                 objectOutputStream = new ObjectOutputStream(new BufferedOutputStream(outputStream));
                                 objectOutputStream.writeObject(messageObjectToSend);
+                                objectOutputStream.flush();
                             }
                         }
                     }
@@ -287,7 +311,7 @@ public class GroupMessengerActivity extends Activity {
             } catch (IOException e) {
                 Log.e(TAG, "ClientTask socket IOException");
             } catch (Exception e) {
-                e.printStackTrace();
+                Log.e("ERROR", e.getStackTrace().toString());
             } finally {
                 try {
                     if (socket != null)
@@ -326,21 +350,29 @@ public class GroupMessengerActivity extends Activity {
                     CommunicationMode communicationMode = messageObject.getCommunicationMode();
 
                     if (communicationMode == CommunicationMode.MESSAGE) {
-                        /* A message was received */
-                        String messageId = messageObject.getMessageId();
-                        /* Extract port number from the message ID */
-                        String portNumber = messageId.substring(0, messageId.indexOf("_"));
+                        /* A message was received. Make a proposal for it's sequence number */
 
-                        /* TODO: Need to put the message text somewhere? Mostly not */
-                        String messageText = messageObject.getMessageText();
-
+                        /* ========= Figuring out a proposal ========== */
                         /* Get the highest sequence number from the HBQ */
                         int maxSeqNumber = 0;
-                        if (!holdBackQueue.isEmpty())
-                            maxSeqNumber = Integer.parseInt(holdBackQueue.lastKey());
+                        if (!holdBackQueue.isEmpty()) {
+                            String lastKey = holdBackQueue.lastKey();
+                            maxSeqNumber = Integer.parseInt(lastKey.substring(0, lastKey.indexOf(".")));
+                        }
+                        /* If the deliveryQueue had a higher seq num, get that */
+//                        if (!deliveryQueue.isEmpty()) {
+//                            String lastKey = deliveryQueue.lastKey();
+//                            int lastSeqNumber = Integer.parseInt(lastKey.substring(0, lastKey.indexOf(".")));
+//                            if (lastSeqNumber > maxSeqNumber)
+//                                maxSeqNumber = lastSeqNumber;
+//                        }
+                        /* If the last delivered number was even higher, get that */
+                        if (seqNumOfLastDelivered > maxSeqNumber)
+                            maxSeqNumber = seqNumOfLastDelivered;
+
                         /* Set the proposal as 1 more than the highest seq number.
                          * Also, append the port number to avoid race condition. */
-                        String proposedSeqNumber = String.valueOf(maxSeqNumber + 1) + "." + portNumber;
+                        String proposedSeqNumber = String.valueOf(maxSeqNumber + 1) + "." + myPortNumber;
                         messageObject.setProposedSeqNumber(proposedSeqNumber);
 
                         /* Put your proposal in the HBQ */
@@ -351,32 +383,45 @@ public class GroupMessengerActivity extends Activity {
 
                     } else if (communicationMode == CommunicationMode.PROPOSAL) {
 
+                        /* Get list of proposals received until now */
+                        List<Message> proposalList = proposalsReceived.get(messageObject.getMessageId());
+                        /* If the proposal list is empty, initialize it */
+                        if (proposalList == null)
+                            proposalList = new ArrayList<>();
+
                         /* Add this proposal to list of proposals received */
-                        proposalsReceived.add(messageObject);
+                        proposalList.add(messageObject);
+                        proposalsReceived.put(messageObject.getMessageId(), proposalList);
+
+                        Log.d("DEBUG", "[" + messageObject.getMessageId() + "] Proposal received: " + messageObject.getProposedSeqNumber() + ". Num of proposals received: " + proposalList.size());
 
                         /* Only if ALL proposals have been received */
                         /* TODO: What if 1 of the devices crashed? Need to avoid infinite loop */
-                        if (proposalsReceived.size() == GROUP.length) {
+                        if (proposalList.size() == GROUP.length) {
 
                             /* Accept the highest proposal */
                             String highestSeqNumber = "";
-                            for (Message messageWithProposal : proposalsReceived) {
+                            for (Message messageWithProposal : proposalList) {
                                 String proposedSeqNumber = messageWithProposal.getProposedSeqNumber();
                                 if (proposedSeqNumber.compareTo(highestSeqNumber) > 0)
                                     highestSeqNumber = proposedSeqNumber;
                             }
 
+                            Log.d("DEBUG", "All proposals received. Winner ==> " + highestSeqNumber);
+
                             /* Now that we've ACCEPTED a proposal, let everyone know what it is */
                             messageObject.setAgreedSeqNumber(highestSeqNumber);
                             new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR,
-                                    String.valueOf(CommunicationMode.ACCEPTED_PROPOSAL), messageObject);
+                                    String.valueOf(CommunicationMode.AGREED_PROPOSAL), messageObject);
                         }
 
-                    } else if (communicationMode == CommunicationMode.ACCEPTED_PROPOSAL) {
+                    } else if (communicationMode == CommunicationMode.AGREED_PROPOSAL) {
 
                         /* We get the agreed proposal here. */
                         String agreedSeqNumber = messageObject.getAgreedSeqNumber();
                         String messageId = messageObject.getMessageId();
+
+                        Log.d("DEBUG", "[" + messageId + "] Agreed seq no. received ==> " + agreedSeqNumber);
 
                         /* Find the sequence num corresponding to this message ID in the HBQ */
                         String existingSeqNumberForThisMessage = "";
@@ -398,83 +443,113 @@ public class GroupMessengerActivity extends Activity {
                             /* TODO: Should I be retaining any info in it's message? I think not. */
                             holdBackQueue.remove(existingSeqNumberForThisMessage);
 
-                            /* Put the new (agreed) sequence number on the HBQ */
-                            holdBackQueue.put(agreedSeqNumber, messageObject);
                             existingSeqNumberForThisMessage = agreedSeqNumber;
                         }
 
                         /* Mark as DELIVERABLE (i.e. ready-to-deliver) */
-                        holdBackQueue.get(existingSeqNumberForThisMessage).setDeliverable(true);
-
+                        messageObject.setDeliverable(true);
+                        /* Put the new (agreed) sequence number on the HBQ */
+                        holdBackQueue.put(existingSeqNumberForThisMessage, messageObject);
+                        Log.d("DEBUG", "Before transferring to deliveryQueue: " + hbqToString());
 
                         /* If front of the holdBackQueue has any deliverables,
                          * transfer them to the delivery queue */
                         while (true) {
-                            Message firstMessageInQueue = holdBackQueue.get(holdBackQueue.firstKey());
-                            if (firstMessageInQueue.isDeliverable()) {
-                                /* Remove from HBQ, and add to deliveryQueue */
-                                deliveryQueue.put(holdBackQueue.firstKey(), firstMessageInQueue);
-                                holdBackQueue.remove(holdBackQueue.firstKey());
+                            if (!holdBackQueue.isEmpty()) {
+                                Message firstMessageInQueue = holdBackQueue.get(holdBackQueue.firstKey());
+                                if (firstMessageInQueue.isDeliverable()) {
+                                    /* Remove from HBQ, and add to deliveryQueue */
+                                    deliveryQueue.put(holdBackQueue.firstKey(), firstMessageInQueue);
+                                    holdBackQueue.remove(holdBackQueue.firstKey());
+                                } else
+                                    break;
                             } else
                                 break;
                         }
 
                         /* Deliver stuff that can be delivered in the delivery queue */
-                        deliver();
+                        synchronized (this) {
+                            deliver();
+                        }
                     }
 
                 }
 
             } catch (IOException e) {
-                e.printStackTrace();
+                Log.e("ERROR", e.getStackTrace().toString());
             } catch (Exception e) {
-                e.printStackTrace();
+                Log.e("ERROR", e.getStackTrace().toString());
             }
 
             return null;
         }
 
-        private void deliver() {
+        private synchronized void deliver() {
 
             /* TODO: Check if this method has been implemented properly */
+            try {
+                int lastNum = seqNumOfLastDelivered;
+                List<String> deliverThese = new ArrayList<>();
 
-            int lastNum = seqNumOfLastDelivered;
-            List<String> deliverThese = new ArrayList<>();
+                /* Iterate through the delivery queue and mark messages that can be delivered right away */
+                Log.d("DEBUG", "DeliveryQueue -->> " + deliveryQueue.keySet());
+                Log.d("DEBUG", "seqNumOfLastDelivered => " + seqNumOfLastDelivered);
 
-            /* Iterate through the delivery queue and mark messages that can be delivered right away */
-            Iterator<String> keySetIterator = deliveryQueue.keySet().iterator();
-            while (keySetIterator.hasNext()) {
-                String sequenceNum = keySetIterator.next();
+                if (!deliveryQueue.isEmpty()) {
 
-                /* Remove the pid. If the seqNum was 3.2, then strippedSequenceNum = 3 */
-                int strippedSequenceNum = Integer.parseInt(sequenceNum.substring(0, sequenceNum.indexOf(".")));
+                    Iterator<String> keySetIterator = deliveryQueue.keySet().iterator();
+                    while (keySetIterator.hasNext()) {
+                        String sequenceNum = keySetIterator.next();
 
-                /* If this number is 1 more than (or same as) the last seen seqNum,
-                 * then it can be delivered */
-                if (strippedSequenceNum == lastNum + 1 || strippedSequenceNum == lastNum) {
-                    deliverThese.add(sequenceNum);
-                    lastNum = strippedSequenceNum;
-                } else
-                    break;
+                        /* Remove the pid. If the seqNum was 3.2, then strippedSequenceNum = 3 */
+                        int strippedSequenceNum = Integer.parseInt(sequenceNum.substring(0, sequenceNum.indexOf(".")));
+
+                        /* If this number is 1 more than (or same as) the last seen seqNum,
+                         * then it can be delivered */
+ // TODO: Temporarily removing this condition. Might need this to make it FIFO
+ //                        if (strippedSequenceNum == lastNum + 1 || strippedSequenceNum == lastNum) {
+                        if (true) {
+                            deliverThese.add(sequenceNum);
+                            lastNum = strippedSequenceNum;
+                        } else
+                            break;
+                    }
+
+                    Log.d("DEBUG", "DELIVER THESE -->> " + deliverThese);
+
+                    for (String deliverThisSeqNum : deliverThese) {
+
+                        /* TODO: Should we be stripping the seq num before putting it in the Content Provider?
+                         * TODO: What happens when there's 2.1 and 2.2 - they'll both get stripped to 2 */
+                        int strippedSequenceNum = Integer.parseInt(deliverThisSeqNum.substring(0, deliverThisSeqNum.indexOf(".")));
+                        String messageToDeliver = deliveryQueue.get(deliverThisSeqNum).getMessageText();
+
+                        /* Subtract 1 because sequence begins from 0 */
+// TODO:                int deliverySeqNum = (strippedSequenceNum - 1);
+                        int deliverySeqNum = seqNumOfLastDelivered;
+                        Log.d("DEBUG", "DELIVERING -> " + deliverySeqNum + ", msg: " + messageToDeliver);
+
+                        /* Remove the entry from the deliveryQueue */
+                        deliveryQueue.remove(deliverThisSeqNum);
+
+                        /* Deliver */
+                        ContentValues contentValue = new ContentValues();
+                        contentValue.put(OnPTestClickListener.KEY_FIELD, Integer.toString(deliverySeqNum));
+                        contentValue.put(OnPTestClickListener.VALUE_FIELD, messageToDeliver);
+                        getContentResolver().insert(uri, contentValue);
+
+                        Log.d("DEBUG", "ContentValues: " + Integer.toString(deliverySeqNum) + " ==> " + messageToDeliver);
+
+                        /* This is the sequence number of the message that has just been delivered */
+// TODO:                seqNumOfLastDelivered = strippedSequenceNum;
+                        seqNumOfLastDelivered++;
+                    }
+
+                    publishProgress();
+                }
+            } catch (Exception e) {
+                Log.e("ERROR", e.getStackTrace().toString());
             }
-
-            for (String deliverThisSeqNum: deliverThese) {
-
-                /* TODO: Should we be stripping the seq num before putting it in the Content Provider? */
-                int strippedSequenceNum = Integer.parseInt(deliverThisSeqNum.substring(0, deliverThisSeqNum.indexOf(".")));
-                String messageToDeliver = deliveryQueue.get(deliverThisSeqNum).getMessageText();
-
-                /* Remove the entry from the deliveryQueue */
-                deliveryQueue.remove(deliverThisSeqNum);
-
-                /* Deliver */
-                ContentValues contentValue = new ContentValues();
-                contentValue.put(OnPTestClickListener.KEY_FIELD, Integer.toString(strippedSequenceNum));
-                contentValue.put(OnPTestClickListener.VALUE_FIELD, messageToDeliver);
-                getContentResolver().insert(uri, contentValue);
-            }
-
-            publishProgress();
         }
 
         protected void onProgressUpdate(String... strings) {
@@ -483,9 +558,31 @@ public class GroupMessengerActivity extends Activity {
             showChatOnTextView();
             return;
         }
+
+        protected String hbqToString() {
+            StringBuffer hbqString = new StringBuffer("HBQ [key, msgID, isDeliverable, proposedSeqNum, agreedSeqNum]:\n ");
+            Iterator<String> iterator = holdBackQueue.keySet().iterator();
+            while (iterator.hasNext()) {
+                String key = iterator.next();
+                Message messageObject = holdBackQueue.get(key);
+                hbqString.append("[" + key + ", " + messageObject.getMessageId() + ", " + messageObject.isDeliverable() + ", " + messageObject.getProposedSeqNumber() + ", " + messageObject.getAgreedSeqNumber() + "] --> ");
+            }
+            return hbqString.toString();
+        }
     }
 
     public enum CommunicationMode {
-        MESSAGE, PROPOSAL, ACCEPTED_PROPOSAL
+        MESSAGE, PROPOSAL, AGREED_PROPOSAL
     }
+
+    static class CustomComparator implements Comparator<String> {
+        @Override
+        public int compare(String s1, String s2) {
+            double d1 = Double.parseDouble(s1);
+            double d2 = Double.parseDouble(s2);
+            if (d1 < d2) return -1;
+            else if (d1 > d2) return 1;
+            else return 0;
+        }
+    };
 }

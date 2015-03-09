@@ -1,9 +1,11 @@
 package edu.buffalo.cse.cse486586.groupmessenger2;
 
+import java.io.Serializable;
+
 /**
  * Created by ankitkap on 3/8/15.
  */
-public class Message {
+public class Message implements Serializable {
 
     String messageText;
     String messageId;

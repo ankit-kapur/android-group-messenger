@@ -68,7 +68,7 @@ public class GroupMessengerProvider extends ContentProvider {
         /* Write the content values to internal storage */
         writeToInternalStorage(fileName, value);
 
-        Log.v("insert", values.toString());
+//      Log.v("insert", values.toString());
         return uri;
     }
 
@@ -103,7 +103,6 @@ public class GroupMessengerProvider extends ContentProvider {
             matrixCursor.addRow(columnValues);
         }
 
-        Log.v("query", selection + " --> " + fileContent);
         return matrixCursor;
     }
 
