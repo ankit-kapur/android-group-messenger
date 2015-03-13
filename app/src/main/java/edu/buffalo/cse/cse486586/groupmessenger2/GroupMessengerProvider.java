@@ -6,7 +6,6 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.net.Uri;
-import android.util.Log;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -68,7 +67,7 @@ public class GroupMessengerProvider extends ContentProvider {
         /* Write the content values to internal storage */
         writeToInternalStorage(fileName, value);
 
-//      Log.v("insert", values.toString());
+//      Log.v("insert", values.stringify());
         return uri;
     }
 

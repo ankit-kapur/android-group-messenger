@@ -17,12 +17,11 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.DataOutputStream;
+import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.ObjectInputStream;
+import java.io.InputStreamReader;
 import java.io.ObjectOutputStream;
+import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -46,8 +45,8 @@ import java.util.concurrent.locks.ReentrantLock;
 public class GroupMessengerActivity extends Activity {
 
     /* Read timeout of 500 ms */
-    int PROPOSAL_TIMEOUT = 13000;
-    int AGREEMENT_TIMEOUT = 15000;
+    int PROPOSAL_TIMEOUT = 5000;
+    int AGREEMENT_TIMEOUT = 9000;
 
     /* Keeps track of the local sequence numbers across ALL devices */
     static Map<String, Integer> seqNumTracker = new HashMap<>();
@@ -237,7 +236,8 @@ public class GroupMessengerActivity extends Activity {
 
             /* Misc declarations */
             Socket socket = null;
-            DataOutputStream outputStream;
+//            BufferedOutputStream outputStream;
+            PrintWriter printWriter;
             ObjectOutputStream objectOutputStream = null;
 
             try {
@@ -264,12 +264,9 @@ public class GroupMessengerActivity extends Activity {
                                 socket = new Socket(InetAddress.getByAddress(new byte[]{10, 0, 2, 2}),
                                         Integer.parseInt(devicePort));
 
-                            /* Client code that sends out a message. */
-                                outputStream = new DataOutputStream(socket.getOutputStream());
-                                objectOutputStream = new ObjectOutputStream(new BufferedOutputStream(outputStream));
-
-                                objectOutputStream.writeObject(messageToSend);
-                                objectOutputStream.flush();
+                                /* Client code that sends out a message. */
+                                printWriter = new PrintWriter(socket.getOutputStream(), true);
+                                printWriter.println(messageToSend.stringify());
                             } catch (IOException e) {
                                 Log.e(TAG, "Unable to send message to port " + devicePort + ". Can't find device.");
                             }
@@ -312,10 +309,12 @@ public class GroupMessengerActivity extends Activity {
                                         Socket socket = new Socket(InetAddress.getByAddress(new byte[]{10, 0, 2, 2}),
                                                 Integer.parseInt(myPortNumber));
 
-                                        DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream());
-                                        ObjectOutputStream objectOutputStream = new ObjectOutputStream(new BufferedOutputStream(outputStream));
-                                        objectOutputStream.writeObject(messageToSend);
-                                        objectOutputStream.flush();
+                                        PrintWriter printWriter = new PrintWriter(socket.getOutputStream(), true);
+                                        printWriter.println(messageToSend.stringify());
+//                                        DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream());
+//                                        ObjectOutputStream objectOutputStream = new ObjectOutputStream(new BufferedOutputStream(outputStream));
+//                                        objectOutputStream.writeObject(messageToSend);
+//                                        objectOutputStream.flush();
                                     } catch (IOException e) {
                                         Log.e("ERROR", Log.getStackTraceString(e));
                                     }
@@ -349,10 +348,13 @@ public class GroupMessengerActivity extends Activity {
                     /* Send the PROPOSAL as a UNICAST */
                         socket = new Socket(InetAddress.getByAddress(new byte[]{10, 0, 2, 2}),
                                 Integer.parseInt(destinationPort));
-                        outputStream = new DataOutputStream(socket.getOutputStream());
-                        objectOutputStream = new ObjectOutputStream(new BufferedOutputStream(outputStream));
-                        objectOutputStream.writeObject(messageObject);
-                        objectOutputStream.flush();
+//                        outputStream = new DataOutputStream(socket.getOutputStream());
+//                        objectOutputStream = new ObjectOutputStream(new BufferedOutputStream(outputStream));
+//                        objectOutputStream.writeObject(messageObject);
+//                        objectOutputStream.flush();
+
+                        printWriter = new PrintWriter(socket.getOutputStream(), true);
+                        printWriter.println(messageObject.stringify());
 
                         Log.d("DEBUG", "Waiting... to check if an agreement to this proposal has been received.");
                     /* Wait and check if all proposals have been received */
@@ -402,11 +404,14 @@ public class GroupMessengerActivity extends Activity {
                             socket = new Socket(InetAddress.getByAddress(new byte[]{10, 0, 2, 2}),
                                     Integer.parseInt(remotePort));
 
-                        /* Client code that sends out a message. */
-                            outputStream = new DataOutputStream(socket.getOutputStream());
-                            objectOutputStream = new ObjectOutputStream(new BufferedOutputStream(outputStream));
-                            objectOutputStream.writeObject(messageObjectToSend);
-                            objectOutputStream.flush();
+                            /* Client code that sends out a message. */
+                            printWriter = new PrintWriter(socket.getOutputStream(), true);
+                            printWriter.println(messageObjectToSend.stringify());
+
+//                            outputStream = new DataOutputStream(socket.getOutputStream());
+//                            objectOutputStream = new ObjectOutputStream(new BufferedOutputStream(outputStream));
+//                            objectOutputStream.writeObject(messageObjectToSend);
+//                            objectOutputStream.flush();
                         }
 
                     } finally {
@@ -452,8 +457,14 @@ public class GroupMessengerActivity extends Activity {
                 while (true) {
                     clientSocket = serverSocket.accept();
 
-                    ObjectInputStream objectInputStream = new ObjectInputStream(new BufferedInputStream(clientSocket.getInputStream()));
-                    messageObject = (Message) objectInputStream.readObject();
+//                    ObjectInputStream objectInputStream = new ObjectInputStream(new BufferedInputStream(clientSocket.getInputStream()));
+//                    messageObject = (Message) objectInputStream.readObject();
+
+//                    Print printWriter = new PrintWriter(socket.getOutputStream());
+//                    printWriter.println(messageToSend.stringify());
+
+                    BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                    messageObject = Message.assembleObjectFromString(bufferedReader.readLine());
 
                     CommunicationMode communicationMode = messageObject.getCommunicationMode();
 
