@@ -13,11 +13,29 @@ public class Message implements Serializable {
     String proposedSeqNumber;
     String agreedSeqNumber;
     GroupMessengerActivity.CommunicationMode communicationMode;
+    String deviceIdOfProposer;
+    String localSequenceNumber;
 
     public Message(String messageText, String messageId, boolean isDeliverable) {
         this.messageText = messageText;
         this.messageId = messageId;
         this.isDeliverable = isDeliverable;
+    }
+
+    public String getLocalSequenceNumber() {
+        return localSequenceNumber;
+    }
+
+    public void setLocalSequenceNumber(String localSequenceNumber) {
+        this.localSequenceNumber = localSequenceNumber;
+    }
+
+    public String getDeviceIdOfProposer() {
+        return deviceIdOfProposer;
+    }
+
+    public void setDeviceIdOfProposer(String deviceIdOfProposer) {
+        this.deviceIdOfProposer = deviceIdOfProposer;
     }
 
     public String getProposedSeqNumber() {
