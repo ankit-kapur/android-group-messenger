@@ -3,7 +3,7 @@ package edu.buffalo.cse.cse486586.groupmessenger2;
 /**
  * Created by ankitkap on 3/8/15.
  */
-public class Message {
+public class MessageWrapper {
 
     String messageText;
     String messageId;
@@ -12,7 +12,6 @@ public class Message {
     String agreedSeqNumber;
     GroupMessengerActivity.CommunicationMode communicationMode;
     String deviceIdOfProposer;
-    String localSequenceNumber;
 
     static String separator = "##";
 
@@ -20,12 +19,12 @@ public class Message {
         String escapedText = messageText.replaceAll("\n", "\\\\n");
         String s = (escapedText + separator + messageId + separator + String.valueOf(isDeliverable) + separator
                 + proposedSeqNumber + separator + agreedSeqNumber + separator + communicationMode.toString()
-                + separator + deviceIdOfProposer + separator + localSequenceNumber);
+                + separator + deviceIdOfProposer);
         return s;
     }
 
-    public static Message assembleObjectFromString(String s) {
-        Message msg = new Message();
+    public static MessageWrapper assembleObjectFromString(String s) {
+        MessageWrapper msg = new MessageWrapper();
 
         String unescapedString = s.replaceAll("\\\\n", "\n");
         String[] parts = unescapedString.split(separator);
@@ -37,24 +36,15 @@ public class Message {
         msg.setAgreedSeqNumber(parts[4]);
         msg.setCommunicationMode(GroupMessengerActivity.CommunicationMode.valueOf(parts[5]));
         msg.setDeviceIdOfProposer(parts[6]);
-        msg.setLocalSequenceNumber(parts[7]);
 
         return msg;
     }
 
-    public Message() {}
-    public Message(String messageText, String messageId, boolean isDeliverable) {
+    public MessageWrapper() {}
+    public MessageWrapper(String messageText, String messageId, boolean isDeliverable) {
         this.messageText = messageText;
         this.messageId = messageId;
         this.isDeliverable = isDeliverable;
-    }
-
-    public String getLocalSequenceNumber() {
-        return localSequenceNumber;
-    }
-
-    public void setLocalSequenceNumber(String localSequenceNumber) {
-        this.localSequenceNumber = localSequenceNumber;
     }
 
     public String getDeviceIdOfProposer() {
