@@ -44,8 +44,8 @@ import java.util.concurrent.locks.ReentrantLock;
 public class GroupMessengerActivity extends Activity {
 
 	/* Timeouts */
-	final int PROPOSAL_TIMEOUT = 8000;
-	final int AGREEMENT_TIMEOUT = 8000;
+	final int PROPOSAL_TIMEOUT = 5000;
+	final int AGREEMENT_TIMEOUT = 9000;
 
 	/* Max proposal number and agreed number */
 	static int maxProposedNum = 0;
@@ -56,13 +56,15 @@ public class GroupMessengerActivity extends Activity {
 	static ReentrantLock deviceGroupLock = new ReentrantLock(true);
 	static ReentrantLock deliveryQueueLock = new ReentrantLock(true);
 	static ReentrantLock deliverMethodLock = new ReentrantLock(true);
-	static ReentrantLock agreedProposalLock = new ReentrantLock(true);
-	static ReentrantLock proposalBlockLock = new ReentrantLock(true);
-	static ReentrantLock msgBlockLock = new ReentrantLock(true);
+	static ReentrantLock messageTrackerLock = new ReentrantLock(true);
+	//static ReentrantLock agreedProposalLock = new ReentrantLock(true);
+	//static ReentrantLock proposalBlockLock = new ReentrantLock(true);
+	//static ReentrantLock msgBlockLock = new ReentrantLock(true);
 
 	/* Keeps track of proposals received.
 	 * key = messageId, value = messageObject */
 	static Map<String, List<MessageWrapper>> proposalsReceived = new HashMap<>();
+	Map<String, Boolean> messageTracker = new HashMap<>();
 
 	/* Keeps track of WHICH devices have sent proposals and which have not */
 	static Map<String, Boolean> proposalState = new HashMap<>();
@@ -252,13 +254,15 @@ public class GroupMessengerActivity extends Activity {
 				if (communicationMode == CommunicationMode.SEND_MESSAGE) {
 				    /* --- Send a message --- */
 
-					msgBlockLock.lock();
 					try {
-                        /* Get message-text */
+					    /* Get message-text */
 						String messageText = (String) msgs[1];
 						final String msgId = myPortNumber + "_" + messagesSent++;
 
 						Log.d(TAG, "[" + msgId + "] Send button clicked. Message: " + messageText);
+						messageTrackerLock.lock();
+						messageTracker.put(msgId, false);
+						messageTrackerLock.unlock();
 
                         /* Wrap the message text and ID */
 						final MessageWrapper messageWrapperToSend = new MessageWrapper(messageText, msgId, false);
@@ -289,7 +293,7 @@ public class GroupMessengerActivity extends Activity {
 						} finally {
 							deviceGroupLock.unlock();
 						}
-                        /* Wait and check if all proposals have been received */
+		                /* Wait and check if all proposals have been received */
 						Log.d(TAG, "[" + msgId + "] Waiting... to check if all proposals were received.");
 
 						timer.schedule(new TimerTask() {
@@ -297,15 +301,18 @@ public class GroupMessengerActivity extends Activity {
 								List<String> portRemovalList = new ArrayList<>();
 
 								deviceGroupLock.lock();
-								for (String devicePort : DEVICE_GROUP) {
+								try {
+									for (String devicePort : DEVICE_GROUP) {
 
                                     /* If a proposal has not been received yet,
                                      * the device is dead. Remove it from DEVICE_GROUP */
-									String msgAndDeviceId = msgId + "$" + devicePort;
-									if (!proposalState.get(msgAndDeviceId))
-										portRemovalList.add(devicePort);
+										String msgAndDeviceId = msgId + "$" + devicePort;
+										if (!proposalState.get(msgAndDeviceId))
+											portRemovalList.add(devicePort);
+									}
+								} finally {
+									deviceGroupLock.unlock();
 								}
-								deviceGroupLock.unlock();
 
                                 /* If there was at least one proposer DEATH */
 								if (!portRemovalList.isEmpty()) {
@@ -316,8 +323,11 @@ public class GroupMessengerActivity extends Activity {
 
                                     /* Remove devices from the DEVICE_GROUP */
 									deviceGroupLock.lock();
-									DEVICE_GROUP.removeAll(portRemovalList);
-									deviceGroupLock.unlock();
+									try {
+										DEVICE_GROUP.removeAll(portRemovalList);
+									} finally {
+										deviceGroupLock.unlock();
+									}
 
                                     /* Send a notice to myself to move on (because at least one
                                      * proposer died). Don't wait for a proposal from the dead devices */
@@ -337,11 +347,11 @@ public class GroupMessengerActivity extends Activity {
 						}, PROPOSAL_TIMEOUT);
 						Thread.sleep(1);
 					} finally {
-						msgBlockLock.unlock();
 					}
 				} else if (communicationMode == CommunicationMode.SEND_PROPOSAL) {
                     /* --- Send a proposal --- */
-					proposalBlockLock.lock();
+					ReentrantLock localLock = new ReentrantLock();
+					localLock.lock();
 					try {
                         /* The message received here contains the proposed seq no.
                          * (made by this device's server) */
@@ -382,8 +392,11 @@ public class GroupMessengerActivity extends Activity {
 
                                     /* Remove this device from your device list */
 									deviceGroupLock.lock();
-									DEVICE_GROUP.remove(destinationPort);
-									deviceGroupLock.unlock();
+									try {
+										DEVICE_GROUP.remove(destinationPort);
+									} finally {
+										deviceGroupLock.unlock();
+									}
 
                                     /* Drop this message from my HBQ */
 									hbqAccessLock.lock();
@@ -405,8 +418,7 @@ public class GroupMessengerActivity extends Activity {
 										if (seqNumToDrop != null) {
 											Log.d(TAG, "[" + messageId + "] Message DROPPED from HBQ (Didn't get an agreement)");
 											holdBackQueue.remove(seqNumToDrop);
-										}
-										else
+										} else
 											Log.e("ERROR " + TAG, "[" + messageId + "] Couldn't drop msg from HBQ -> " + debugString);
 
 									} finally {
@@ -418,12 +430,13 @@ public class GroupMessengerActivity extends Activity {
 						}, AGREEMENT_TIMEOUT);
 						Thread.sleep(1);
 					} finally {
-						proposalBlockLock.unlock();
+						localLock.unlock();
 					}
 
 				} else if (communicationMode == CommunicationMode.SEND_AGREED_PROP) {
                     /* Send the agreed proposal to everyone */
-					agreedProposalLock.lock();
+					//ReentrantLock localLock = new ReentrantLock();
+					//localLock.lock();
 					try {
 						MessageWrapper messageWrapperObjectToSend = (MessageWrapper) msgs[1];
 						messageWrapperObjectToSend.setCommunicationMode(CommunicationMode.AGREED_PROP_RECEIVED);
@@ -431,20 +444,23 @@ public class GroupMessengerActivity extends Activity {
 						Log.d(TAG, "Sending agreed proposal to all: " + messageWrapperObjectToSend.getAgreedSeqNumber());
 
 						deviceGroupLock.lock();
-						for (int remoteHostNumber = 0; remoteHostNumber < DEVICE_GROUP.size(); remoteHostNumber++) {
-							String remotePort = DEVICE_GROUP.get(remoteHostNumber);
+						try {
+							for (int remoteHostNumber = 0; remoteHostNumber < DEVICE_GROUP.size(); remoteHostNumber++) {
+								String remotePort = DEVICE_GROUP.get(remoteHostNumber);
 
-							socket = new Socket(InetAddress.getByAddress(new byte[]{10, 0, 2, 2}),
-									Integer.parseInt(remotePort));
+								socket = new Socket(InetAddress.getByAddress(new byte[]{10, 0, 2, 2}),
+										Integer.parseInt(remotePort));
 
                             /* Client code that sends out a message. */
-							printWriter = new PrintWriter(socket.getOutputStream(), true);
-							printWriter.println(messageWrapperObjectToSend.stringify());
+								printWriter = new PrintWriter(socket.getOutputStream(), true);
+								printWriter.println(messageWrapperObjectToSend.stringify());
+							}
+						} finally {
+							deviceGroupLock.unlock();
 						}
-						deviceGroupLock.unlock();
 
 					} finally {
-						agreedProposalLock.unlock();
+						//localLock.unlock();
 					}
 				}
 
@@ -492,7 +508,8 @@ public class GroupMessengerActivity extends Activity {
 					if (communicationMode == CommunicationMode.RECEIVE_MESSAGE) {
                         /* A message was received. Make a proposal for it's sequence number */
 
-						msgBlockLock.lock();
+						ReentrantLock localLock = new ReentrantLock();
+						localLock.lock();
 						try {
                             /* ========= Figuring out a proposal ========== */
 
@@ -511,12 +528,13 @@ public class GroupMessengerActivity extends Activity {
                             /* Send proposal to the sender */
 							new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, String.valueOf(CommunicationMode.SEND_PROPOSAL), messageWrapperObject);
 						} finally {
-							msgBlockLock.unlock();
+							localLock.unlock();
 						}
 					} else if (communicationMode == CommunicationMode.RECEIVE_PROPOSAL || communicationMode == CommunicationMode.DEAD_PROPOSAL) {
 
                         /* --- Proposal received --- */
-						proposalBlockLock.lock();
+						ReentrantLock localLock = new ReentrantLock();
+						localLock.lock();
 						try {
                             /* Get list of proposals received until now */
 							List<MessageWrapper> proposalList = proposalsReceived.get(msgId);
@@ -541,68 +559,81 @@ public class GroupMessengerActivity extends Activity {
 								Log.d(TAG, "[" + msgId + "] DEVICE_GROUP is now ==> " + DEVICE_GROUP);
 							}
 
-							/* Has a proposal been received from every alive device */
-							Log.d(TAG, "[" + msgId + "] Checking if ALL proposals have been received");
-							int numOfPropsFromAliveDevices = 0;
-							List<String> deadProposals = new ArrayList<>();
-							List<MessageWrapper> deadMsgObjects = new ArrayList<>();
+							messageTrackerLock.lock();
+							List<String> messageIdList = new ArrayList<>();
+							if (communicationMode == CommunicationMode.DEAD_PROPOSAL) {
+								for (String msgTrackerId : messageTracker.keySet())
+									if (!messageTracker.get(msgTrackerId))
+										messageIdList.add(msgTrackerId);
+							} else
+								messageIdList.add(msgId);
+							messageTrackerLock.unlock();
 
-							for (String msgAndDeviceId : proposalState.keySet()) {
-								String currentMsgId = msgAndDeviceId.substring(0, msgAndDeviceId.indexOf('$'));
-								String deviceId = msgAndDeviceId.substring(msgAndDeviceId.indexOf('$') + 1);
+							for (String thisMsgId : messageIdList) {
 
-								if (currentMsgId.equals(msgId)) {
-									if (DEVICE_GROUP.contains(deviceId)) {
-										boolean status = proposalState.get(msgAndDeviceId);
-										if (status)
-											numOfPropsFromAliveDevices++;
-									} else {
-										/* There's a proposal from a dead device.
-										 * Remove it from the proposalState map */
-										deadProposals.add(msgAndDeviceId);
+								/* Has a proposal been received from every alive device */
+								Log.d(TAG, "[" + msgId + "] Checking if ALL proposals have been received");
+								int numOfPropsFromAliveDevices = 0;
+								List<String> deadProposals = new ArrayList<>();
+								List<MessageWrapper> deadMsgObjects = new ArrayList<>();
 
-										/* Remove from the proposalList */
-										for (MessageWrapper obj : proposalList)
-											if (deviceId.equals(obj.getDeviceIdOfProposer()))
-												deadMsgObjects.add(obj);
+								for (String msgAndDeviceId : proposalState.keySet()) {
+									String currentMsgId = msgAndDeviceId.substring(0, msgAndDeviceId.indexOf('$'));
+									String deviceId = msgAndDeviceId.substring(msgAndDeviceId.indexOf('$') + 1);
+
+									if (currentMsgId.equals(thisMsgId)) {
+										if (DEVICE_GROUP.contains(deviceId)) {
+											boolean status = proposalState.get(msgAndDeviceId);
+											if (status)
+												numOfPropsFromAliveDevices++;
+										} else {
+												/* There's a proposal from a dead device.
+												 * Remove it from the proposalState map */
+											deadProposals.add(msgAndDeviceId);
+
+												/* Remove from the proposalList */
+											for (MessageWrapper obj : proposalList)
+												if (deviceId.equals(obj.getDeviceIdOfProposer()))
+													deadMsgObjects.add(obj);
+										}
 									}
 								}
+
+									/* Remove dead devices from the proposalState map.
+									 * This may not be needed. */
+								for (String deadMsgDeviceId : deadProposals)
+									proposalState.remove(deadMsgDeviceId);
+
+								proposalList.removeAll(deadMsgObjects);
+								proposalsReceived.put(thisMsgId, proposalList);
+
+                                    /* Only if ALL proposals have been received */
+								if (numOfPropsFromAliveDevices == DEVICE_GROUP.size()) {
+
+                                        /* Accept the highest proposal */
+									String highestSeqNumber = "";
+									for (MessageWrapper messageWrapperWithProposal : proposalList) {
+										String proposedSeqNumber = messageWrapperWithProposal.getProposedSeqNumber();
+										if (proposedSeqNumber.compareTo(highestSeqNumber) > 0)
+											highestSeqNumber = proposedSeqNumber;
+									}
+
+									Log.d(TAG, "[" + thisMsgId + "] All proposals received. Winner ==> " + highestSeqNumber);
+
+                                        /* Now that we've ACCEPTED a proposal, let everyone know what it is */
+									messageWrapperObject.setAgreedSeqNumber(highestSeqNumber);
+									new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR,
+											String.valueOf(CommunicationMode.SEND_AGREED_PROP), messageWrapperObject);
+								} else
+									Log.d(TAG, "[" + thisMsgId + "] Still awaiting proposals. numOfPropsFromAliveDevices: " + numOfPropsFromAliveDevices + ", DEVICE_GROUP: " + DEVICE_GROUP);
 							}
-
-							/* Remove dead devices from the proposalState map.
-							 * This may not be needed. */
-							for (String deadMsgDeviceId : deadProposals)
-								proposalState.remove(deadMsgDeviceId);
-
-							proposalList.removeAll(deadMsgObjects);
-							proposalsReceived.put(msgId, proposalList);
-
-                            /* Only if ALL proposals have been received */
-							if (numOfPropsFromAliveDevices == DEVICE_GROUP.size()) {
-
-                                /* Accept the highest proposal */
-								String highestSeqNumber = "";
-								for (MessageWrapper messageWrapperWithProposal : proposalList) {
-									String proposedSeqNumber = messageWrapperWithProposal.getProposedSeqNumber();
-									if (proposedSeqNumber.compareTo(highestSeqNumber) > 0)
-										highestSeqNumber = proposedSeqNumber;
-								}
-
-								Log.d(TAG, "[" + msgId + "] All proposals received. Winner ==> " + highestSeqNumber);
-
-                                /* Now that we've ACCEPTED a proposal, let everyone know what it is */
-								messageWrapperObject.setAgreedSeqNumber(highestSeqNumber);
-								new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR,
-										String.valueOf(CommunicationMode.SEND_AGREED_PROP), messageWrapperObject);
-							} else
-								Log.d(TAG, "[" + msgId + "] Still awaiting proposals. numOfPropsFromAliveDevices: "+numOfPropsFromAliveDevices + ", DEVICE_GROUP: " + DEVICE_GROUP);
 						} finally {
-							proposalBlockLock.unlock();
+							localLock.unlock();
 						}
 					} else if (communicationMode == CommunicationMode.AGREED_PROP_RECEIVED) {
                         /* We get the agreed proposal here. */
-
-						agreedProposalLock.lock();
+						ReentrantLock localLock = new ReentrantLock();
+						localLock.lock();
 						try {
 							String agreedSeqNumber = messageWrapperObject.getAgreedSeqNumber();
 							String messageId = messageWrapperObject.getMessageId();
@@ -634,20 +665,25 @@ public class GroupMessengerActivity extends Activity {
 							}
 
                             /* Is the new (agreed) sequence number greater than the existing seq number? */
-							hbqAccessLock.lock();
-							if (agreedSeqNumber.compareTo(existingSeqNumberForThisMessage) > 0) {
+							if (!existingSeqNumberForThisMessage.equals("")) {
+								hbqAccessLock.lock();
+								try {
+									if (agreedSeqNumber.compareTo(existingSeqNumberForThisMessage) > 0) {
                                 /* Remove the existing entry in the HBQ */
-								Log.d(TAG, "[" + msgId + "] HBQ before removing proposed seq num: " + hbqToString());
-								holdBackQueue.remove(existingSeqNumberForThisMessage);
-								existingSeqNumberForThisMessage = agreedSeqNumber;
-							}
-							hbqAccessLock.unlock();
+										Log.d(TAG, "[" + msgId + "] HBQ before removing proposed seq num: " + hbqToString());
+										holdBackQueue.remove(existingSeqNumberForThisMessage);
+										existingSeqNumberForThisMessage = agreedSeqNumber;
+									}
+								} finally {
+									hbqAccessLock.unlock();
+								}
 
                             /* Mark as DELIVERABLE (i.e. ready-to-deliver) */
-							messageWrapperObject.setDeliverable(true);
+								messageWrapperObject.setDeliverable(true);
                             /* Put the new (agreed) sequence number on the HBQ */
-							holdBackQueue.put(existingSeqNumberForThisMessage, messageWrapperObject);
-							Log.d(TAG, "[" + msgId + "] Before transferring to deliveryQueue: " + hbqToString());
+								holdBackQueue.put(existingSeqNumberForThisMessage, messageWrapperObject);
+								Log.d(TAG, "[" + msgId + "] Before transferring to deliveryQueue: " + hbqToString());
+							}
 
                             /* Wait a while before making the delivery */
                             /* TODO: Currently wait time set to zero */
@@ -689,7 +725,7 @@ public class GroupMessengerActivity extends Activity {
 							}, 0);
 
 						} finally {
-							agreedProposalLock.unlock();
+							localLock.unlock();
 						}
 					}
 				}
@@ -712,34 +748,43 @@ public class GroupMessengerActivity extends Activity {
 
                     /* Iterate through the delivery queue and mark messages that can be delivered right away */
 					deliveryQueueLock.lock();
-					Log.d(TAG, "DeliveryQueue -->> " + deliveryQueue.keySet());
-					Log.d(TAG, "seqNumOfLastDelivered => " + seqNumOfLastDelivered);
+					try {
+						Log.d(TAG, "DeliveryQueue --> " + deliveryQueue.keySet());
+						Log.d(TAG, "seqNumOfLastDelivered => " + seqNumOfLastDelivered);
 
-					for (String sequenceNum : deliveryQueue.keySet()) {
+						for (String sequenceNum : deliveryQueue.keySet()) {
                         /* If this number is 1 more than (or same as) the last seen seqNum,
                          * then it can be delivered */
 
-						if (true) {
-							deliverThese.add(sequenceNum);
-						} else
-							break;
+							if (true) {
+								deliverThese.add(sequenceNum);
+							} else
+								break;
+						}
+					} finally {
+						deliveryQueueLock.unlock();
 					}
-					deliveryQueueLock.unlock();
 
 					Log.d(TAG, "DELIVER THESE -->> " + deliverThese);
 
 					for (String deliverThisSeqNum : deliverThese) {
 
 						String messageToDeliver = deliveryQueue.get(deliverThisSeqNum).getMessageText();
+						String msgId = deliveryQueue.get(deliverThisSeqNum).getMessageId();
 
                         /* Subtract 1 because sequence begins from 0 */
 						int deliverySeqNum = seqNumOfLastDelivered;
 						Log.d(TAG, "\nDELIVERING -> " + deliverySeqNum + ", msg: [" + deliveryQueue.get(deliverThisSeqNum).getMessageId() + "] " + messageToDeliver + " -> " + deliveryQueue.get(deliverThisSeqNum).getAgreedSeqNumber());
+						messageTrackerLock.lock();messageTracker.put(msgId, true);
+						messageTrackerLock.unlock();
 
                         /* Remove the entry from the deliveryQueue */
 						deliveryQueueLock.lock();
-						deliveryQueue.remove(deliverThisSeqNum);
-						deliveryQueueLock.unlock();
+						try {
+							deliveryQueue.remove(deliverThisSeqNum);
+						} finally {
+							deliveryQueueLock.unlock();
+						}
 
                         /* Deliver */
 						ContentValues contentValue = new ContentValues();
